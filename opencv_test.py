@@ -16,6 +16,9 @@ cable matrix. The first column is the image to match, the second is the right si
 
 cable_matrix = np.array([[]], dtype = "object")
 
+def test(text):
+    print(text)
+
 """
 function to process the chart. Takes an image chart, returns a sorted matrix and manipulated images (gray, big image, thresh)
 """
@@ -54,6 +57,7 @@ def process_chart(image_path):
 
     #determining the length of row
     stitches_per_row = count_row_stitches(inner_contours)
+    stitches_per_row = 10
 
     #sorting the stitches inside each row from right to left
     stitches = []
@@ -64,9 +68,39 @@ def process_chart(image_path):
             (inner_contours, _) = contours.sort_contours(row, method="right-to-left")
             stitches.append(inner_contours)
             row = []
-    #print_stitch(stitches, big_image)
-    #cv2.imshow("Labeled Grid", big_image)
+    print_stitch(stitches, big_image)
+    cv2.imshow("Labeled Grid", big_image)
     return stitches, thresh, gray
+
+"""
+determines if the chart is a color, lace or cable chart. returns an integer for type. 0 is color, 1 is lace, 2 is cable
+"""
+
+def determine_chart(image_path):
+    image = cv2.imread(image_path)
+    img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    template = cv2.imread("images\yotemplate.PNG", 0)
+    w, h = template.shape[::-1]
+    res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
+    threshold = 0.8
+    loc = np.where( res >= threshold)
+    #for pt in zip(*loc[::-1]):
+        #cv2.rectangle(image, pt, (pt[0] + w, pt[1] + h), (0,0,255), 2)
+    type = -1
+    uniques = np.unique(image.reshape(-1, image.shape[-1]), axis=0)
+    #ironically color charts have the fewest amount of colors because text display anti aliasing display nice
+    if len(uniques) < 20:
+        type = 0
+        print(type)
+        return type
+    elif len(loc) > 4:
+        type = 1
+        print(type)
+        return type
+    else:
+        type = 2
+        print(type)
+        return type 
 
 """
 creates the stitch matrix assuming a color punch card
@@ -77,7 +111,6 @@ def color_punch(stitches, thresh, gray):
     punch_card_row = []
     for row in stitches:
         for c in row:
-            isGrey = None
             x, y, w, h = cv2.boundingRect(c)
             mask = np.zeros(thresh.shape[:2], dtype="uint8")
             cv2.rectangle(mask, (x,y), (x+w, y+h), 255, -1)
@@ -87,6 +120,97 @@ def color_punch(stitches, thresh, gray):
                 punch_card_row.append(0)
             else:
                 punch_card_row.append(1)
+        punch_card.append(punch_card_row)
+        punch_card_row = []
+    return punch_card
+
+"""
+creates stitch matric assuming a lace punch card
+"""
+
+def lace_punch(stitches, image, gray):
+    #creating the color matrix
+    punch_card = []
+    punch_card_row = []
+    k2tog = cv2.imread("images/template-k2tog.PNG", 0)
+    ssk = cv2.imread("images/template-ssk.PNG", 0)
+    yo = cv2.imread("images/template-yo.PNG", 0)
+    for row in stitches:
+        for c in row:
+            x, y, w, h = cv2.boundingRect(c)
+            mask = np.zeros(image.shape[:2], dtype="uint8")
+            cv2.rectangle(mask, (x,y), (x+w, y+h), 255, -1)
+            masked = cv2.bitwise_and(gray, gray, mask=mask)
+            res_k2tog = cv2.matchTemplate(masked, k2tog, cv2.TM_CCOEFF_NORMED)
+            threshold = 0.90
+            k2tog_loc = np.where(res_k2tog >= threshold)
+            print("k2tog: ")
+            print(len(k2tog_loc))
+            res_ssk = cv2.matchTemplate(masked, ssk, cv2.TM_CCOEFF_NORMED)
+            threshold = 0.90
+            ssk_loc = np.where(res_ssk >= threshold)
+            print("ssk: ")
+            print(len(ssk_loc))
+            res_yo = cv2.matchTemplate(masked, yo, cv2.TM_CCOEFF_NORMED)
+            threshold = 0.90
+            yo_loc = np.where(res_yo >= threshold)
+            print("yo: ")
+            print(len(yo_loc))
+            if len(yo_loc) > 4:
+                punch_card_row.append('yo')
+            elif len(ssk_loc) > 4:
+                punch_card_row.append('ssk')
+            elif len(k2tog_loc) > 5:
+                punch_card_row.append('k2tog')
+            else:
+                punch_card_row.append('k')
+        punch_card.append(punch_card_row)
+        punch_card_row = []
+    print(punch_card)
+    return punch_card
+
+"""
+creates stitch matric assuming a cable punch card
+"""
+
+def cable_punch(stitches, thresh, gray):
+    #creating the color matrix
+    punch_card = []
+    punch_card_row = []
+    for row in stitches:
+        for c in row:
+    k2tog = cv2.imread("images/template-k2tog.PNG", 0)
+    ssk = cv2.imread("images/template-ssk.PNG", 0)
+    yo = cv2.imread("images/template-yo.PNG", 0)
+    for row in stitches:
+        for c in row:
+            x, y, w, h = cv2.boundingRect(c)
+            mask = np.zeros(image.shape[:2], dtype="uint8")
+            cv2.rectangle(mask, (x,y), (x+w, y+h), 255, -1)
+            masked = cv2.bitwise_and(gray, gray, mask=mask)
+            res_k2tog = cv2.matchTemplate(masked, k2tog, cv2.TM_CCOEFF_NORMED)
+            threshold = 0.90
+            k2tog_loc = np.where(res_k2tog >= threshold)
+            print("k2tog: ")
+            print(len(k2tog_loc))
+            res_ssk = cv2.matchTemplate(masked, ssk, cv2.TM_CCOEFF_NORMED)
+            threshold = 0.90
+            ssk_loc = np.where(res_ssk >= threshold)
+            print("ssk: ")
+            print(len(ssk_loc))
+            res_yo = cv2.matchTemplate(masked, yo, cv2.TM_CCOEFF_NORMED)
+            threshold = 0.90
+            yo_loc = np.where(res_yo >= threshold)
+            print("yo: ")
+            print(len(yo_loc))
+            if len(yo_loc) > 4:
+                punch_card_row.append('yo')
+            elif len(ssk_loc) > 4:
+                punch_card_row.append('ssk')
+            elif len(k2tog_loc) > 5:
+                punch_card_row.append('k2tog')
+            else:
+                punch_card_row.append('k')
         punch_card.append(punch_card_row)
         punch_card_row = []
     return punch_card
@@ -106,6 +230,7 @@ def print_stitch(stitches, big_image):
 
 """
 Determines the number of stitches per row
+maybe buggy
 """
 
 def count_row_stitches(knit_contours):
@@ -159,6 +284,10 @@ def make_instructions_color(punch_card):
     print(instructions)
     return instructions
 
+"""
+Make instructions assuming on a lace pattern
+"""    
+
 def make_instructions_lace(punch_card):
     #used to monitor odd or even
     number = 1
@@ -192,6 +321,10 @@ def make_instructions_lace(punch_card):
         row +=1
     print(instructions)
     return instructions
+
+"""
+Makes instructions for a cable chart
+"""    
 
 def make_instructions_cable(punch_card):
     number = 1
@@ -228,7 +361,10 @@ def make_instructions_cable(punch_card):
 
 # Example usage
 #image, punch_card = process_chart("C:/Users/Alabaster/Pictures/knit_chart_color_small.png")
-process_chart("C:/Users/Alabaster/Pictures/knit_chart_cable.png")
+stitch_matrix, thresh, gray = process_chart("C:/Users/Alabaster/Pictures/knit_chart_CABLE.png")
+#punch_card = lace_punch(stitch_matrix, thresh, gray)
+#make_instructions_lace(punch_card)
+#determine_chart("C:/Users/Alabaster/Pictures/knit_chart_lace.png")
 #cv2.imshow("Labeled Grid", image)
 cv2.waitKey(0)
 #make_instructions(punch_card)
