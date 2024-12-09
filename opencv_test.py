@@ -16,6 +16,21 @@ cable matrix. The first column is the image to match, the second is the right si
 
 cable_matrix = np.array([[]], dtype = "object")
 
+def convert(image_path, stitches_per_row, row_number, x_position, y_position):
+    stitch_matrix, thresh, gray = process_chart(image_path)
+    chart_type = determine_chart(image_path)
+    if (chart_type == 0):
+        punch_card = color_punch(stitch_matrix, thresh, gray)
+        return make_instructions_color(punch_card, stitches_per_row, row_number, x_position, y_position)
+    elif (chart_type == 1):
+        punch_card = lace_punch(stitch_matrix, thresh, gray)
+        return make_instructions_lace(punch_card, stitches_per_row, row_number, x_position, y_positon)
+    elif (chart_type == 2):
+        punch_card = cable_punch(stitch_matrix, thresh, gray)
+        return make_instructions_cable(punch_card, stitches_per_row, row_number, x_position, y_positon)
+    else:
+        return "error"
+
 def test(text):
     print(text)
 
@@ -68,8 +83,8 @@ def process_chart(image_path):
             (inner_contours, _) = contours.sort_contours(row, method="right-to-left")
             stitches.append(inner_contours)
             row = []
-    print_stitch(stitches, big_image)
-    cv2.imshow("Labeled Grid", big_image)
+    #print_stitch(stitches, big_image)
+    #cv2.imshow("Labeled Grid", big_image)
     return stitches, thresh, gray
 
 """
@@ -91,15 +106,12 @@ def determine_chart(image_path):
     #ironically color charts have the fewest amount of colors because text display anti aliasing display nice
     if len(uniques) < 20:
         type = 0
-        print(type)
         return type
     elif len(loc) > 4:
         type = 1
-        print(type)
         return type
     else:
         type = 2
-        print(type)
         return type 
 
 """
@@ -177,8 +189,6 @@ def cable_punch(stitches, thresh, gray):
     #creating the color matrix
     punch_card = []
     punch_card_row = []
-    for row in stitches:
-        for c in row:
     k2tog = cv2.imread("images/template-k2tog.PNG", 0)
     ssk = cv2.imread("images/template-ssk.PNG", 0)
     yo = cv2.imread("images/template-yo.PNG", 0)
@@ -249,46 +259,145 @@ def count_row_stitches(knit_contours):
     return rownum
 
 """
+checks if the numbers are valid
+"""
+
+def check_valid(punch_card, stitches_per_row, row_number):
+    pattern_rows_count = len(punch_card)
+    pattern_stitches_per_row = len(punch_card[0])
+    spr = int(stitches_per_row)
+    nor = int(row_number)
+    if (nor == spr == -1):
+        return True
+    elif (nor == -1) and (spr > pattern_rows_count -1):
+        return True
+    elif (spr == -1) and (nor > stitches_per_row -1):
+        return True
+    elif (nor < pattern_rows_count):
+        return False
+    elif (spr < pattern_stitches_per_row):
+        return False
+    else:
+        return True
+
+"""
+calculates the repeat stitches
+"""
+
+def calc_repeats(stitches, row):
+    if (stitches != -1):
+        repeats = stitches//row
+    else:
+        repeats = 1
+    return repeats
+
+"""
+checks if there are excess stitches or is needed
+"""
+
+def is_excess(stitches, rows):
+    if (stitches % rows == 0):
+        return False
+    else:
+        if (stitches == -1):
+            return False
+        else:
+            return True
+
+"""
+calculates the excess stitches
+"""
+def xs_stitches(stitches, rows, position):
+    xs = stitches % rows
+    xs_left = 0
+    xs_right = 0
+    if (position == "left") or (position == "up"):
+        xs_left = xs
+    elif (position == "right") or (position == "down"):
+        xs_right = xs
+    elif (position == "center"):
+        xs_left = xs//2
+        xs_right = xs-xs_left
+    else:
+        xs_left = 0
+        xs_right = 0
+    
+    return xs_left, xs_right
+
+"""
+all excess calcs in one
+"""
+
+def excess_stitch(stitches, rows, position):
+    if (is_excess(stitches, rows)):
+        return xs_stitches(stitches, rows, position)
+    else:
+        return 0, 0
+    
+"""
 Creates knitting instructions assuming a colorwork pattern
 """
-def make_instructions_color(punch_card):
+def make_instructions_color(punch_card, stitches_per_row, row_number, x_position, y_position):
     number = 1
     row = 1
     previous = -1
     instructions = ""
     row_instructions = ""
     knit_or_purl = "k"
-    for i in punch_card:
-        for j in i:
-            if j == previous:
-                number += 1
+    
+    if (check_valid(punch_card, stitches_per_row, row_number)):
+        x_repeats = calc_repeats(int(stitches_per_row), len(punch_card))
+        y_repeats = calc_repeats(int(row_number), len(punch_card[0]))
+        x_xs_left, x_xs_right = excess_stitch(int(stitches_per_row), len(punch_card), x_position)
+        y_xs_up, y_xs_down = excess_stitch(int(row_number), len(punch_card[0]), y_position)
+
+        if (y_xs_down > 0):
+            instructions += "Knit " + str(y_xs_down) + " rows stockinette \n \n"
+
+        instructions += "Pattern Start: \n"
+        for i in punch_card:
+            if (x_xs_left > 0):
+                row_instructions += "(selvedge: k"  + "A" + str(x_xs_left) + ") "  
+            for j in i:
+                if j == previous:
+                    number += 1
+                else:
+                    if j == 0:
+                        if (previous != -1):
+                            row_instructions += knit_or_purl + "B" + str(number) + ", "
+                            number = 1
+                        previous = j
+                    elif j == 1: 
+                        if (previous != -1):
+                            row_instructions += knit_or_purl + "A" + str(number) + ", "
+                            number = 1
+                        previous = j
+            end_catch = "A" if previous%2 == 0 else "B"
+            row_instructions += knit_or_purl + end_catch + str(number)
+            if (x_xs_right > 0):
+                row_instructions += " (selvedge: k" + "A" + str(x_xs_right) + ")"  
+            if (x_repeats > 1):
+                instructions += "Row " + str(row) + ": *" + row_instructions + "* " + str(x_repeats) +" times" + "\n"
             else:
-                if j == 0:
-                    if (previous != -1):
-                        row_instructions += knit_or_purl + "B" + str(number) + ", "
-                        number = 1
-                    previous = j
-                elif j == 1: 
-                    if (previous != -1):
-                        row_instructions += knit_or_purl + "A" + str(number) + ", "
-                        number = 1
-                    previous = j
-        end_catch = "A" if previous%2 == 0 else "B"
-        row_instructions += knit_or_purl + end_catch + str(number)
-        instructions += "Row " + str(row) + ": " + row_instructions + "\n"
-        knit_or_purl = "k" if row%2 == 0 else "p"
-        previous = -1
-        number = 1
-        row_instructions = ""
-        row +=1
-    print(instructions)
+                instructions += "Row " + str(row) + ": " + row_instructions + "\n"
+            knit_or_purl = "k" if row%2 == 0 else "p"
+            previous = -1
+            number = 1
+            row_instructions = ""
+            row +=1
+        if(y_repeats > 1):
+            instructions += "\nRepeat pattern for " + str(y_repeats) + " number of times \n"
+        if (y_xs_up > 0):
+            instructions += "\nKnit " + str(y_xs_up) + " rows in stockinette"
+    else:
+        instructions = "The measurements given do not work."
     return instructions
 
 """
 Make instructions assuming on a lace pattern
 """    
 
-def make_instructions_lace(punch_card):
+def make_instructions_lace(punch_card, stitches_per_row, row_number):
     #used to monitor odd or even
     number = 1
     row = 1
@@ -326,7 +435,7 @@ def make_instructions_lace(punch_card):
 Makes instructions for a cable chart
 """    
 
-def make_instructions_cable(punch_card):
+def make_instructions_cable(punch_card, stitches_per_row, row_number):
     number = 1
     row = 1
     previous = -1
@@ -361,11 +470,11 @@ def make_instructions_cable(punch_card):
 
 # Example usage
 #image, punch_card = process_chart("C:/Users/Alabaster/Pictures/knit_chart_color_small.png")
-stitch_matrix, thresh, gray = process_chart("C:/Users/Alabaster/Pictures/knit_chart_CABLE.png")
+#stitch_matrix, thresh, gray = process_chart("C:/Users/Alabaster/Pictures/knit_chart_cable.png")
 #punch_card = lace_punch(stitch_matrix, thresh, gray)
 #make_instructions_lace(punch_card)
 #determine_chart("C:/Users/Alabaster/Pictures/knit_chart_lace.png")
 #cv2.imshow("Labeled Grid", image)
-cv2.waitKey(0)
+#cv2.waitKey(0)
 #make_instructions(punch_card)
-cv2.destroyAllWindows()                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+#cv2.destroyAllWindows()                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
