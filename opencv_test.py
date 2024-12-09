@@ -343,6 +343,8 @@ def make_instructions_color(punch_card, stitches_per_row, row_number, x_position
     previous = -1
     instructions = ""
     row_instructions = ""
+    r_selvedge = ""
+    l_selvedge = ""
     knit_or_purl = "k"
     
     if (check_valid(punch_card, stitches_per_row, row_number)):
@@ -353,11 +355,15 @@ def make_instructions_color(punch_card, stitches_per_row, row_number, x_position
 
         if (y_xs_down > 0):
             instructions += "Knit " + str(y_xs_down) + " rows stockinette \n \n"
+        
+        if (x_xs_right > 0):
+            r_selvedge = " (selvedge: k" + "A" + str(x_xs_right) + ") "
+        if (x_xs_left > 0):
+            l_selvedge = " (selvedge: k"  + "A" + str(x_xs_left) + ") " 
 
         instructions += "Pattern Start: \n"
         for i in punch_card:
-            if (x_xs_left > 0):
-                row_instructions += "(selvedge: k"  + "A" + str(x_xs_left) + ") "  
+             
             for j in i:
                 if j == previous:
                     number += 1
@@ -374,12 +380,10 @@ def make_instructions_color(punch_card, stitches_per_row, row_number, x_position
                         previous = j
             end_catch = "A" if previous%2 == 0 else "B"
             row_instructions += knit_or_purl + end_catch + str(number)
-            if (x_xs_right > 0):
-                row_instructions += " (selvedge: k" + "A" + str(x_xs_right) + ")"  
             if (x_repeats > 1):
-                instructions += "Row " + str(row) + ": *" + row_instructions + "* " + str(x_repeats) +" times" + "\n"
+                instructions += "Row " + str(row) + ": " + l_selvedge + "*" + row_instructions + "* " + str(x_repeats) + " times" + r_selvedge + "\n"
             else:
-                instructions += "Row " + str(row) + ": " + row_instructions + "\n"
+                instructions += "Row " + str(row) + ": " + l_selvedge + row_instructions + r_selvedge + "\n"        
             knit_or_purl = "k" if row%2 == 0 else "p"
             previous = -1
             number = 1
