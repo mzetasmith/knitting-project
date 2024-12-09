@@ -6,7 +6,6 @@ from kivy.uix.button import Button
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.textinput import TextInput
 from kivy.uix.image import Image
-from kivy.properties import ObjectProperty
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 
@@ -142,7 +141,7 @@ class KnitApp(App):
         xposition.add_widget(self.right)
 
         yposition.add_widget(Label(text = 'Vertical position: '))
-        yposition.add_widget(Label(text = 'Up'))
+        yposition.add_widget(Label(text = 'Top'))
         self.up = CheckBox(group = 'y_position')
         self.up.bind(active = self.on_up)
         yposition.add_widget(self.up)
@@ -152,7 +151,7 @@ class KnitApp(App):
         self.ycenter.bind(active = self.y_on_center)
         yposition.add_widget(self.ycenter)
 
-        yposition.add_widget(Label(text = 'Down'))
+        yposition.add_widget(Label(text = 'Bottom'))
         self.down = CheckBox(active= False, group = 'y_position')
         self.down.bind(active = self.on_down)
         yposition.add_widget(self.down)
