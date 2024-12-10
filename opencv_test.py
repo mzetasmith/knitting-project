@@ -42,6 +42,8 @@ def process_chart(image_path):
     # Read the image
     image = cv2.imread(image_path)
     big_image= cv2.resize(image, None, fx = 3.0, fy = 3.0, interpolation = cv2.INTER_LINEAR)
+    cv2.imshow("Labeled Grid", big_image)
+    cv2.waitKey(0)
     
     #image processing
     gray = cv2.cvtColor(big_image, cv2.COLOR_BGR2GRAY)
@@ -118,7 +120,6 @@ def determine_chart(image_path):
 creates the stitch matrix assuming a color punch card
 """
 def color_punch(stitches, thresh, gray):
-    #creating the color matrix
     punch_card = []
     punch_card_row = []
     for row in stitches:
@@ -141,7 +142,6 @@ creates stitch matric assuming a lace punch card
 """
 
 def lace_punch(stitches, image, gray):
-    #creating the color matrix
     punch_card = []
     punch_card_row = []
     k2tog = cv2.imread("images/template-k2tog.PNG", 0)
@@ -149,30 +149,33 @@ def lace_punch(stitches, image, gray):
     yo = cv2.imread("images/template-yo.PNG", 0)
     for row in stitches:
         for c in row:
+            isK2tog = False
+            isSsk = False
+            isYo = False
             x, y, w, h = cv2.boundingRect(c)
             mask = np.zeros(image.shape[:2], dtype="uint8")
             cv2.rectangle(mask, (x,y), (x+w, y+h), 255, -1)
             masked = cv2.bitwise_and(gray, gray, mask=mask)
-            res_k2tog = cv2.matchTemplate(masked, k2tog, cv2.TM_CCOEFF_NORMED)
-            threshold = 0.90
-            k2tog_loc = np.where(res_k2tog >= threshold)
-            print("k2tog: ")
-            print(len(k2tog_loc))
-            res_ssk = cv2.matchTemplate(masked, ssk, cv2.TM_CCOEFF_NORMED)
-            threshold = 0.90
-            ssk_loc = np.where(res_ssk >= threshold)
-            print("ssk: ")
-            print(len(ssk_loc))
-            res_yo = cv2.matchTemplate(masked, yo, cv2.TM_CCOEFF_NORMED)
-            threshold = 0.90
-            yo_loc = np.where(res_yo >= threshold)
-            print("yo: ")
-            print(len(yo_loc))
-            if len(yo_loc) > 4:
+            res_k2tog = cv2.matchTemplate(masked, k2tog, cv2.TM_CCORR_NORMED)
+            min_val, max_val_k2tog, min_loc, max_loc = cv2.minMaxLoc(res_k2tog)
+            res_ssk = cv2.matchTemplate(masked, ssk, cv2.TM_CCORR_NORMED)
+            min_val, max_val_ssk, min_loc, max_loc = cv2.minMaxLoc(res_ssk)
+            res_yo = cv2.matchTemplate(masked, yo, cv2.TM_CCORR_NORMED)
+            min_val, max_val_yo, min_loc, max_loc = cv2.minMaxLoc(res_yo)
+            if (max(max_val_k2tog, max_val_ssk, max_val_yo) > 0.99):
+                if(max_val_k2tog > max_val_ssk):
+                    if(max_val_k2tog > max_val_yo):
+                        isK2tog = True
+                    else:
+                        isYo = True
+                else:
+                    if(max_val_ssk > max_val_yo):
+                        isSsk = True
+            if (isYo):
                 punch_card_row.append('yo')
-            elif len(ssk_loc) > 4:
+            elif (isSsk):
                 punch_card_row.append('ssk')
-            elif len(k2tog_loc) > 5:
+            elif (isK2tog):
                 punch_card_row.append('k2tog')
             else:
                 punch_card_row.append('k')
@@ -185,44 +188,49 @@ def lace_punch(stitches, image, gray):
 creates stitch matric assuming a cable punch card
 """
 
-def cable_punch(stitches, thresh, gray):
-    #creating the color matrix
+def cable_punch(stitches, image, gray):
     punch_card = []
     punch_card_row = []
-    k2tog = cv2.imread("images/template-k2tog.PNG", 0)
-    ssk = cv2.imread("images/template-ssk.PNG", 0)
-    yo = cv2.imread("images/template-yo.PNG", 0)
+    left = cv2.imread("images/template-cable-left.PNG", 0)
+    right = cv2.imread("images/template-cable-right.PNG", 0)
+    purl = cv2.imread("images/template-purl.PNG", 0)
     for row in stitches:
         for c in row:
+            isLeft = False
+            isRight = False
+            isPurl = False
             x, y, w, h = cv2.boundingRect(c)
             mask = np.zeros(image.shape[:2], dtype="uint8")
             cv2.rectangle(mask, (x,y), (x+w, y+h), 255, -1)
             masked = cv2.bitwise_and(gray, gray, mask=mask)
-            res_k2tog = cv2.matchTemplate(masked, k2tog, cv2.TM_CCOEFF_NORMED)
-            threshold = 0.90
-            k2tog_loc = np.where(res_k2tog >= threshold)
-            print("k2tog: ")
-            print(len(k2tog_loc))
-            res_ssk = cv2.matchTemplate(masked, ssk, cv2.TM_CCOEFF_NORMED)
-            threshold = 0.90
-            ssk_loc = np.where(res_ssk >= threshold)
-            print("ssk: ")
-            print(len(ssk_loc))
-            res_yo = cv2.matchTemplate(masked, yo, cv2.TM_CCOEFF_NORMED)
-            threshold = 0.90
-            yo_loc = np.where(res_yo >= threshold)
-            print("yo: ")
-            print(len(yo_loc))
-            if len(yo_loc) > 4:
-                punch_card_row.append('yo')
-            elif len(ssk_loc) > 4:
-                punch_card_row.append('ssk')
-            elif len(k2tog_loc) > 5:
-                punch_card_row.append('k2tog')
+            
+            res_left = cv2.matchTemplate(masked, left, cv2.TM_CCOEFF_NORMED)
+            min_val, max_val_left, min_loc, max_loc = cv2.minMaxLoc(res_left)
+            
+            res_right = cv2.matchTemplate(masked, right, cv2.TM_CCOEFF_NORMED)
+            min_val, max_val_right, min_loc, max_loc = cv2.minMaxLoc(res_right)
+            
+            res_purl = cv2.matchTemplate(masked, purl, cv2.TM_CCOEFF_NORMED)
+            min_val, max_val_purl, min_loc, max_loc = cv2.minMaxLoc(res_purl)
+            
+            if (max(max_val_left, max_val_right, max_val_purl) > 0.9):
+                if (max(max_val_left, max_val_right, max_val_purl) == max_val_left):
+                    isLeft = True
+                if (max(max_val_left, max_val_right, max_val_purl) == max_val_right):
+                    isRight = True
+                if (max(max_val_left, max_val_right, max_val_purl) == max_val_purl):
+                    isPurl = True
+            if (isPurl):
+                punch_card_row.append('p')
+            elif (isRight):
+                punch_card_row.append('right')
+            elif (isLeft):
+                punch_card_row.append('left')
             else:
                 punch_card_row.append('k')
         punch_card.append(punch_card_row)
         punch_card_row = []
+    print(punch_card)
     return punch_card
 
 """
@@ -401,38 +409,64 @@ def make_instructions_color(punch_card, stitches_per_row, row_number, x_position
 Make instructions assuming on a lace pattern
 """    
 
-def make_instructions_lace(punch_card, stitches_per_row, row_number):
-    #used to monitor odd or even
+def make_instructions_lace(punch_card, stitches_per_row, row_number, x_position, y_position):
     number = 1
     row = 1
     previous = -1
     instructions = ""
     row_instructions = ""
+    r_selvedge = ""
+    l_selvedge = ""
     knit_or_purl = "k"
-    for i in punch_card:
-        for j in i:
-            if j == previous:
-                number += 1
+    
+    if (check_valid(punch_card, stitches_per_row, row_number)):
+        x_repeats = calc_repeats(int(stitches_per_row), len(punch_card))
+        y_repeats = calc_repeats(int(row_number), len(punch_card[0]))
+        x_xs_left, x_xs_right = excess_stitch(int(stitches_per_row), len(punch_card), x_position)
+        y_xs_up, y_xs_down = excess_stitch(int(row_number), len(punch_card[0]), y_position)
+
+        if (y_xs_down > 0):
+            instructions += "Knit " + str(y_xs_down) + " rows stockinette \n \n"
+        
+        if (x_xs_right > 0):
+            r_selvedge = " (selvedge: k" + "A" + str(x_xs_right) + ") "
+        if (x_xs_left > 0):
+            l_selvedge = " (selvedge: k"  + "A" + str(x_xs_left) + ") " 
+
+        instructions += "Pattern Start: \n"
+        for i in punch_card:
+             
+            for j in i:
+                if j == previous:
+                    number += 1
+                else:
+                    if j == 0:
+                        if (previous != -1):
+                            row_instructions += knit_or_purl + "B" + str(number) + ", "
+                            number = 1
+                        previous = j
+                    elif j == 1: 
+                        if (previous != -1):
+                            row_instructions += knit_or_purl + "A" + str(number) + ", "
+                            number = 1
+                        previous = j
+            end_catch = "A" if previous%2 == 0 else "B"
+            row_instructions += knit_or_purl + end_catch + str(number)
+            if (x_repeats > 1):
+                instructions += "Row " + str(row) + ": " + l_selvedge + "*" + row_instructions + "* " + str(x_repeats) + " times" + r_selvedge + "\n"
             else:
-                if j == 0:
-                    if (previous != -1):
-                        row_instructions += knit_or_purl + "B" + str(number) + ", "
-                        number = 1
-                    previous = j
-                elif j == 1: 
-                    if (previous != -1):
-                        row_instructions += knit_or_purl + "A" + str(number) + ", "
-                        number = 1
-                    previous = j
-        end_catch = "A" if previous%2 == 0 else "B"
-        row_instructions += knit_or_purl + end_catch + str(number)
-        instructions += "Row " + str(row) + ": " + row_instructions + "\n"
-        knit_or_purl = "k" if row%2 == 0 else "p"
-        previous = -1
-        number = 1
-        row_instructions = ""
-        row +=1
-    print(instructions)
+                instructions += "Row " + str(row) + ": " + l_selvedge + row_instructions + r_selvedge + "\n"        
+            knit_or_purl = "k" if row%2 == 0 else "p"
+            previous = -1
+            number = 1
+            row_instructions = ""
+            row +=1
+        if(y_repeats > 1):
+            instructions += "\nRepeat pattern for " + str(y_repeats) + " number of times \n"
+        if (y_xs_up > 0):
+            instructions += "\nKnit " + str(y_xs_up) + " rows in stockinette"
+    else:
+        instructions = "The measurements given do not work. Please choose numbers greater or equal to the number of stitches in the chart"
     return instructions
 
 """
@@ -474,8 +508,8 @@ def make_instructions_cable(punch_card, stitches_per_row, row_number):
 
 # Example usage
 #image, punch_card = process_chart("C:/Users/Alabaster/Pictures/knit_chart_color_small.png")
-#stitch_matrix, thresh, gray = process_chart("C:/Users/Alabaster/Pictures/knit_chart_cable.png")
-#punch_card = lace_punch(stitch_matrix, thresh, gray)
+stitch_matrix, thresh, gray = process_chart("C:/Users/Alabaster/Pictures/knit_chart_cable.png")
+punch_card = cable_punch(stitch_matrix, thresh, gray)
 #make_instructions_lace(punch_card)
 #determine_chart("C:/Users/Alabaster/Pictures/knit_chart_lace.png")
 #cv2.imshow("Labeled Grid", image)
