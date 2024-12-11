@@ -142,7 +142,7 @@ def make_instructions_color(punch_card, stitches_per_row, row_number, x_position
             instructions += "\nKnit " + str(y_xs_up) + " rows in stockinette"
     else:
         instructions = "The measurements given do not work. Please choose numbers greater or equal to the number of stitches in the chart"
-    print(instructions)
+    #print(instructions)
     return instructions
 
     
@@ -175,11 +175,7 @@ def make_instructions_lace(punch_card, stitches_per_row, row_number, x_position,
         instructions += "Pattern Start: \n"
         for i in punch_card:
             for j in i:
-                #this takes the stitch that J is so if j is k, current is k
                 current = j
-
-                #seems to be correct
-                #if current started as k, it should end as p
                 if (row % 2 == 0):
                     if (j == "k2tog"):
                         current = "ssp"
@@ -189,10 +185,8 @@ def make_instructions_lace(punch_card, stitches_per_row, row_number, x_position,
                         current = "yop"
                     if (j == "k"):
                         current = "p"
-                #this seems to be correct
                 if current == previous:
                     number += 1
-
                 else:
                     if (previous != -1):
                         if (number != 1):
@@ -224,7 +218,6 @@ def make_instructions_lace(punch_card, stitches_per_row, row_number, x_position,
             instructions += "\nKnit " + str(y_xs_up) + " rows in stockinette"
     else:
         instructions = "The measurements given do not work."
-    print(instructions)
     return instructions
 
 """
@@ -239,7 +232,8 @@ def make_instructions_cable(punch_card, stitches_per_row, row_number, x_position
     row_instructions = ""
     r_selvedge = ""
     l_selvedge = ""
-    knit_or_purl = "k"
+    in_cable = False
+    cable_count = 0
     
     if (check_valid(punch_card, stitches_per_row, row_number)):
         x_repeats = calc_repeats(int(stitches_per_row), len(punch_card))
@@ -251,34 +245,69 @@ def make_instructions_cable(punch_card, stitches_per_row, row_number, x_position
             instructions += "Knit " + str(y_xs_down) + " rows stockinette \n \n"
         
         if (x_xs_right > 0):
-            r_selvedge = " (selvedge: k" + "A" + str(x_xs_right) + ") "
+            r_selvedge = " (selvedge: k" + str(x_xs_right) + ") "
         if (x_xs_left > 0):
-            l_selvedge = " (selvedge: k"  + "A" + str(x_xs_left) + ") " 
+            l_selvedge = " (selvedge: k" + str(x_xs_left) + ") " 
 
         instructions += "Pattern Start: \n"
         for i in punch_card:
-             
             for j in i:
-                if j == previous:
+                current = j
+                if (row % 2 == 0):
+                    if (j == "left"):
+                        current = "right"
+                    if (j == "right"):
+                        current = "left"
+                    if (j== "k"):
+                        current = "p"
+                    if (j == "p"):
+                        current = "k"
+                if (previous == "right") or (previous == "left"):
+                    if (in_cable):
+                        print("check, cable false")
+                        in_cable = False
+                    else:
+                        print("check, cable true")
+                        in_cable = True
+                if current == previous: #gathers all the like stitches together
                     number += 1
                 else:
-                    if j == 0:
-                        if (previous != -1):
-                            row_instructions += knit_or_purl + "B" + str(number) + ", "
-                            number = 1
-                        previous = j
-                    elif j == 1: 
-                        if (previous != -1):
-                            row_instructions += knit_or_purl + "A" + str(number) + ", "
-                            number = 1
-                        previous = j
-            end_catch = "A" if previous%2 == 0 else "B"
-            row_instructions += knit_or_purl + end_catch + str(number)
+                    if (previous != -1): #previous = -1 is start of row
+                        if (number != 1): #this is just to make it look pretty. you don't generally say 1k
+                            if (in_cable):
+                                cable_count +=1
+                            else:
+                                if(previous == "left"):
+                                    print("left branch exists")
+                                    row_instructions += str(cable_count)+"/"+str(cable_count)+ "LC" + ", "
+                                    cable_count = 0
+                                    number -=1
+                                elif(previous == "right"):
+                                    row_instructions += str(cable_count)+"/"+str(cable_count)+ "RC" + ", "
+                                    cable_count = 0
+                                    number -=1
+                                else:
+                                    row_instructions += str(number) + previous + ", "
+                                    number = 1
+                        else:
+                            if (in_cable):
+                                print("in_cable")
+                                cable_count +=1
+                            else:
+                                row_instructions += previous + ","
+                previous = current
+            end_catch = current
+            if(number != 1):
+                row_instructions += str(number) + end_catch
+            else:
+                row_instructions += end_catch
+            #x repeats
             if (x_repeats > 1):
                 instructions += "Row " + str(row) + ": " + l_selvedge + "*" + row_instructions + "* " + str(x_repeats) + " times" + r_selvedge + "\n"
             else:
                 instructions += "Row " + str(row) + ": " + l_selvedge + row_instructions + r_selvedge + "\n"        
-            knit_or_purl = "k" if row%2 == 0 else "p"
+            
+            #row reset
             previous = -1
             number = 1
             row_instructions = ""
@@ -288,5 +317,6 @@ def make_instructions_cable(punch_card, stitches_per_row, row_number, x_position
         if (y_xs_up > 0):
             instructions += "\nKnit " + str(y_xs_up) + " rows in stockinette"
     else:
-        instructions = "The measurements given do not work. Please choose numbers greater or equal to the number of stitches in the chart"
+        instructions = "The measurements given do not work."
+    #print(instructions)
     return instructions
