@@ -9,7 +9,7 @@ from kivy.uix.image import Image
 from kivy.uix.filechooser import FileChooserIconView
 from kivy.uix.popup import Popup
 
-import opencvclean
+import image_process
 
 class KnitApp(App):
     x_position = "center"
@@ -30,7 +30,7 @@ class KnitApp(App):
     def convert(self, button):
         layout = GridLayout(cols = 1)
         if (self.filepath):
-            self.instructions = opencvclean.convert(self.filepath, self.stitch_per_row, self.num_of_rows, self.x_position, self.y_position)
+            self.instructions = image_process.convert(self.filepath, self.stitch_per_row, self.num_of_rows, self.x_position, self.y_position)
         else:
             self.instructions = "Error"
         pattern_instruct = Label(text = self.instructions)
@@ -110,7 +110,7 @@ class KnitApp(App):
         
         btn1 = Button(text ="Click here to choose a file", font_size = 20, size_hint =(1, .1), on_press = self.upload)
         
-        horizontal.add_widget(Label(text = 'Amount of stitches per row: ', size_hint= (1,0.2)))
+        horizontal.add_widget(Label(text = 'Number of stitches per row: ', size_hint= (1,0.2)))
         self.horizontal_stitch = TextInput(multiline = False, 
                                           input_filter='int', 
                                           size_hint= (1,0.2),)
@@ -118,7 +118,7 @@ class KnitApp(App):
         horizontal.add_widget(self.horizontal_stitch)
         horizontal.add_widget(Label(text = 'stitches/row',  size_hint= (1,0.2)))
 
-        vertical.add_widget(Label(text = 'Amount of rows: ', size_hint= (1,0.2)))
+        vertical.add_widget(Label(text = 'Number of rows: ', size_hint= (1,0.2)))
         self.vertical_stitch = TextInput(multiline = False, input_filter='int', size_hint= (1,0.2))
         self.vertical_stitch.bind(text = self.get_cols)
         vertical.add_widget(self.vertical_stitch)
