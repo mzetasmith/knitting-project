@@ -8,20 +8,18 @@ import knit_compile
 def convert(image_path, stitches_per_row, row_number, x_position, y_position):
     stitch_matrix, thresh, gray = process_chart(image_path)
     chart_type = determine_chart(image_path)
+    print(chart_type)
     if (chart_type == 0):
         punch_card = color_punch(stitch_matrix, thresh, gray)
         return knit_compile.make_instructions_color(punch_card, stitches_per_row, row_number, x_position, y_position)
     elif (chart_type == 1):
         punch_card = lace_punch(stitch_matrix, thresh, gray)
-        return knit_compile.make_instructions_lace(punch_card, stitches_per_row, row_number, x_position, y_positon)
+        return knit_compile.make_instructions_lace(punch_card, stitches_per_row, row_number, x_position, y_position)
     elif (chart_type == 2):
         punch_card = cable_punch(stitch_matrix, thresh, gray)
-        return knit_compile.make_instructions_cable(punch_card, stitches_per_row, row_number, x_position, y_positon)
+        return knit_compile.make_instructions_cable(punch_card, stitches_per_row, row_number, x_position, y_position)
     else:
         return "error"
-
-def test(text):
-    print(text)
 
 """
 function to process the chart. Takes an image chart, returns a sorted matrix and manipulated images (gray, big image, thresh)
@@ -85,10 +83,12 @@ def determine_chart(image_path):
     img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     template = cv2.imread("images\yotemplate.PNG", 0)
     w, h = template.shape[::-1]
-    res = cv2.matchTemplate(img_gray, template, cv2.TM_CCOEFF_NORMED)
-    threshold = 0.8
+    res = cv2.matchTemplate(img_gray, template, cv2.TM_CCORR_NORMED)
+    threshold = 0.97
     loc = np.where( res >= threshold)
-    #for pt in zip(*loc[::-1]):
+    number = 0
+    for pt in zip(*loc[::-1]):
+        number +=1
         #cv2.rectangle(image, pt, (pt[0] + w, pt[1] + h), (0,0,255), 2)
     type = -1
     uniques = np.unique(image.reshape(-1, image.shape[-1]), axis=0)
@@ -96,12 +96,13 @@ def determine_chart(image_path):
     if len(uniques) < 20:
         type = 0
         return type
-    elif len(loc) > 4:
+    elif number > 1:
         type = 1
         return type
     else:
         type = 2
         return type 
+    
 
 """
 creates the stitch matrix assuming a color punch card
@@ -253,9 +254,9 @@ def count_row_stitches(knit_contours):
 
 # Example usage
 #image, punch_card = process_chart("C:/Users/Alabaster/Pictures/knit_chart_color_small.png")
-#stitch_matrix, thresh, gray = process_chart("C:/Users/Alabaster/Pictures/knit_chart_lace.png")
-#punch_card = lace_punch(stitch_matrix, thresh, gray)
-#knit_compile.make_instructions_lace(punch_card, 10, 10, "center", "center")
+#stitch_matrix, thresh, gray = process_chart("C:/Users/Alabaster/Pictures/knit_chart_cable.png")
+#punch_card = cable_punch(stitch_matrix, thresh, gray)
+#knit_compile.make_instructions_cable(punch_card, 10, 10, "center", "center")
 #determine_chart("C:/Users/Alabaster/Pictures/knit_chart_lace.png")
 #cv2.imshow("Labeled Grid", image)
 #cv2.waitKey(0)
