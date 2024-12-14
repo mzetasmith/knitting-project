@@ -59,7 +59,6 @@ def process_chart(image_path):
 
     #determining the length of row
     stitches_per_row = count_row_stitches(inner_contours)
-    stitches_per_row = 10
 
     #sorting the stitches inside each row from right to left
     stitches = []
